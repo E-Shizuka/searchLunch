@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Today's lunch</title>
+    <meta name="description" content="ランチ検索" />
+    <meta property="og:title" content="ランチ検索" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="#" />
+    <meta property="og:site_name" content="ランチ検索" />
+    <meta property="og:description" content="ランチ検索" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="canonical" href="#" />
+    <link rel="stylesheet" type="text/css" href="css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="css/sanitize.css" />
+    <link
+      href="https://fonts.googleapis.com/earlyaccess/kokoro.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" type="text/css" href="css/style_lunch.css" />
+  </head>
+
+  <body>
+    <div class="header"></div>
+    <div class="firstArea">
+      <h2>今日のランチ</h2>
+      <p>現在地を取得して、ホットペッパー掲載の近隣のお店を表示します。</p>
+      <form>
+        <label for="ranges">検索範囲</label>
+        <select id="ranges">
+          <option value="1">300m</option>
+          <option value="2">500m</option>
+          <option value="3">1000m</option>
+          <option value="4">2000m</option>
+          <option value="5">3000m</option>
+        </select>
+      </form>
+      <button button value="1" data-page="1" id="search">
+        近隣のお店を探す
+      </button>
+    </div>
+    <div class="secondArea">
+      <p class="second-p">
+        距離の近い順に候補のお店を表示します！ （最大50件）
+        <br />Powered by<a href="http://webservice.recruit.co.jp/"
+          >ホットペッパー Webサービス</a
+        >
+      </p>
+      <div id="output"></div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script>
+      $("#search").on("click", (event) => {
+        //①位置情報の取得に成功した場合に実行される関数。
+        function showPosition(position) {
+          console.log(position);
+          //latitude: 緯度、longitude: 経度
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const range = $("#ranges option:selected").val();
+          const lunch = 1;
+          const count = 50;
+          const start = event.target.value;
+          const page = event.target.dataset.page;
+
+          const query = {
+            //APIキー
+            lat: lat,
+            lng: lng,
+            range: range,
+            count: count,
+            lunch: lunch,
+            start: start,
+            order: 4, // 距離の近い順に並べる
+            format: "json",
+          };
+
+          const url =
+            "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?" +
+            $.param(query);
+
+          console.log("緯度" + lat, "経度" + lng);
+
+          $.get(url, function (response) {
+            const json = JSON.parse(response);
+            console.log(json);
+
+            json.results.results_returned = json.results.results_available;
+            if (json.results.shop.length === 0) {
+              const htmlNoresult = [];
+              const noresult = `<div class = "resultArea2">
+              <p>条件に当てはまるものは見つかりませんでした。</p>
+              </div>`;
+              htmlNoresult.push(noresult);
+              $("#output").html(htmlNoresult);
+            } else {
+              const htmlElements = [];
+              const fragment = document.createDocumentFragment();
+
+              json.results.shop.forEach((shop) => {
+                const replacedAddress = shop.address.replace(/－/g, "&mdash;");
+                const element = `<div class = "resultArea">
+                <a href = "${shop.coupon_urls.pc}" id = "link" target="_blank">
+                <h2>${shop.name}</h2>
+                </a>
+                <p class = "address">住所：${replacedAddress}</p>
+                <p>予算：${shop.budget.average}</p>
+                <p>営業時間：${shop.open}</p>
+                </div>`;
+                htmlElements.push(element);
+              });
+
+              $("#output").html(htmlElements.join(""));
+            }
+          });
+        }
+
+        //②位置情報の取得に失敗した場合に実行される関数.
+        function showError(error) {
+          const errorMessages = [
+            "位置情報が許可されてません",
+            "現在位置を特定できません",
+            "位置情報を取得する前にタイムアウトになりました",
+          ];
+          alert(`error:${errorMessages[error.code - 1]}`);
+        }
+        //③位置情報の取得に必要なオプション.
+        const option = {
+          enableHighAccuracy: true, //対応端末でGPS使うか.trueまたはfalseで指定
+          maximumAge: 20000, //指定時間以内であれば前回取得した位置情報の値を用いる．
+          timeout: 1000000, //タイムアウト時間
+        };
+
+        // geolocation.html 条件や設定した後に記載する
+        navigator.geolocation.getCurrentPosition(
+          showPosition,
+          showError,
+          option
+        );
+      });
+    </script>
+  </body>
+</html>
